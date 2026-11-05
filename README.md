@@ -12,6 +12,27 @@ from the ID, so nobody types filenames or cuts up long recordings.
                                                   qc  (missing / orphans / clipped / progress)
 ```
 
+## Easiest: no terminal after setup
+
+| | First time | Every time |
+|---|---|---|
+| macOS | double-click `setup.command` | double-click `start.command` |
+| Windows | – | double-click `start.bat` (sets itself up on first run) |
+
+(or `gdub` / `python -m gdub` with no arguments). This opens the **launcher window** with
+four tabs that replace every terminal command:
+
+1. **Project** – choose/create the project folder, extract the line list from your `.d`
+   scripts, reset takes (all / one character / one line; files go to `_trash/`, not deleted).
+2. **Record** – pick microphone and playback device, start the recorder (optionally on one
+   voice or character), save actor/mic notes.
+3. **Export** – pick the game's speech folder and format, run the export with a progress bar,
+   save the settings as project defaults.
+4. **Quality check** – run the check, read the report, save it.
+
+The recorder itself opens in its own window. On a Mac, the first double-click of a `.command`
+file may need right-click → Open once. The command-line equivalents below still work.
+
 ## Setup (Windows, macOS, Linux)
 
 * Python 3.9+ (the python.org installer includes tkinter).

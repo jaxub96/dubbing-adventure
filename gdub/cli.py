@@ -1,4 +1,4 @@
-"""Command line: gdub extract | record | export | qc | actor | devices"""
+"""Command line: gdub [ui] | extract | record | export | qc | actor | devices"""
 from __future__ import annotations
 
 import argparse
@@ -104,11 +104,17 @@ def cmd_devices(args) -> int:
     return 0
 
 
+def cmd_ui(args) -> int:
+    from . import launcher
+    launcher.run()
+    return 0
+
+
 def build_parser(export_defaults: dict | None = None) -> argparse.ArgumentParser:
     from .export import ExportSettings
     d = ExportSettings()
     p = argparse.ArgumentParser(prog="gdub", description=__doc__)
-    sub = p.add_subparsers(dest="cmd", required=True)
+    sub = p.add_subparsers(dest="cmd")   # no command = open the launcher window
 
     def common(sp):
         sp.add_argument("-p", "--project", default=".", help="project folder (default: current)")
@@ -171,6 +177,9 @@ def build_parser(export_defaults: dict | None = None) -> argparse.ArgumentParser
     s.add_argument("--notes")
     s.set_defaults(func=cmd_actor)
 
+    s = sub.add_parser("ui", help="open the launcher window (all commands as buttons)")
+    s.set_defaults(func=cmd_ui)
+
     s = sub.add_parser("devices", help="list audio devices")
     s.set_defaults(func=cmd_devices)
     return p
@@ -189,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"warning: ignoring project.json: {exc}", file=sys.stderr)
     args = build_parser(defaults).parse_args(argv)
     try:
-        return args.func(args)
+        return args.func(args) if hasattr(args, "func") else cmd_ui(args)
     except (FileNotFoundError, RuntimeError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
