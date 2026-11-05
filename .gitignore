@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+# recording projects (large audio) - keep your project folders outside the repo or ignore them here
+projects/
