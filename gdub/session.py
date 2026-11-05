@@ -137,12 +137,6 @@ class Session:
             self.save()
         return hit
 
-    def forget(self, line_ids) -> None:
-        """Drop all take bookkeeping for these lines (files are handled by reset.py)."""
-        for i in line_ids:
-            self._lines.pop(i, None)
-        self.save()
-
     def set_actor(self, voice: str, **fields) -> dict:
         a = self.actors.setdefault(voice, {})
         a.update({k: v for k, v in fields.items() if v is not None})

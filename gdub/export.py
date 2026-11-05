@@ -1,4 +1,4 @@
-"""Step 3: export the chosen takes - trim, high-pass, (denoise), normalise, convert with
+"""Step 3: export the chosen takes - trim, high-pass, normalise, convert with
 ffmpeg and write DIA_xxx.wav files into the game's speech folder."""
 from __future__ import annotations
 
@@ -26,7 +26,6 @@ class ExportSettings:
     channels: int = 1
     # processing
     highpass_hz: float = 80.0
-    denoise: bool = False
     trim_below_peak_db: float = 40.0
     lead_ms: float = 50.0
     tail_ms: float = 150.0
@@ -74,11 +73,6 @@ def process_audio(data: np.ndarray, sr: int, cfg: ExportSettings, ffmpeg: str, t
     x = x - np.mean(x) if len(x) else x                       # remove DC offset
     x = dsp.highpass(x, sr, cfg.highpass_hz)
     x = dsp.trim_silence(x, sr, cfg.trim_below_peak_db, cfg.lead_ms, cfg.tail_ms)
-    if cfg.denoise:
-        a, b = tmp / "dn_in.wav", tmp / "dn_out.wav"
-        sf.write(str(a), x.astype(np.float32), sr, subtype="FLOAT")
-        _ffmpeg(ffmpeg, a, b, "-af", "afftdn=nr=10:nf=-45", "-c:a", "pcm_f32le")
-        x, _ = sf.read(str(b), dtype="float64")
     return dsp.normalize(x, sr, cfg.normalize, cfg.target_db, cfg.ceiling_db)
 
 

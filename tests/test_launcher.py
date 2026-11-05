@@ -4,31 +4,9 @@ from pathlib import Path
 import pytest
 
 from conftest import FIXTURES, speechlike
-from gdub.reset import reset_lines
 from gdub.session import Session
 
 SR = 48000
-
-
-def test_reset_moves_files_to_trash_and_forgets(project):
-    lines = project.load_lines()
-    s = Session.load(project)
-    s.set_actor("15", mic="SM7B")
-    for ln in lines[:3]:
-        s.store_take(ln, speechlike(), SR)
-        s.store_take(ln, speechlike(), SR)
-    moved, trash = reset_lines(project, s, lines[:1])
-    assert moved == 2 and trash.is_dir()
-    assert not list((project.raw_dir / lines[0].npc).glob(f"{lines[0].id}__take*"))
-    assert len(list(trash.rglob("*.wav"))) == 2                       # moved, not deleted
-    assert not s.is_done(lines[0].id) and s.is_done(lines[1].id)
-    s2 = Session.load(project)                                       # persisted
-    assert not s2.is_done(lines[0].id) and s2.actors["15"]["mic"] == "SM7B"
-    assert s2.reconcile(lines) == 0                                   # nothing re-adopted
-    time.sleep(1.1)                                                   # distinct trash folder name
-    moved, _ = reset_lines(project, s, lines, clear_actors=True)
-    assert moved == 4 and not Session.load(project).actors and not any(project.raw_dir.rglob("*.wav"))
-    assert reset_lines(project, s, lines)[1] is None                  # nothing left
 
 
 def test_launcher_end_to_end(tmp_path, monkeypatch):
@@ -79,10 +57,6 @@ def test_launcher_end_to_end(tmp_path, monkeypatch):
             assert (tmp_path / "speech" / f"{lines[0].id}.wav").exists()
         app.qc_dir.set(""); app.qc()
         pump(lambda: "Quality check" in app.logs["qc"].get("1.0", "end"))
-        # reset one line through the UI
-        app.scope_var.set("One line"); app.refresh()
-        app.target_var.set(app.target_box["values"][0]); app.reset()
-        assert "0/53 lines recorded" in app.status.cget("text")
         app.save_export_defaults()
         assert '"sample_rate"' in p.config_file.read_text()
     finally:

@@ -1,6 +1,6 @@
 """Launcher window: every gdub command as a button/form (no terminal needed).
 
-Tabs: Project (extract, reset) - Record (devices, start recorder, actor notes) -
+Tabs: Project (extract) - Record (devices, start recorder, actor notes) -
 Export - Quality check. The recorder itself opens in its own window/process.
 """
 from __future__ import annotations
@@ -20,7 +20,6 @@ from .extract import extract_paths
 from .lines import write_lines_csv
 from .project import Project
 from .qc import QCSettings, format_report, run_qc
-from .reset import reset_lines
 from .session import Session
 
 PREFS = Path.home() / ".gdub.json"
@@ -198,7 +197,6 @@ class Launcher:
             self.exp_voice["values"] = ["all"] + voices
             self.exp_npc["values"] = ["all"] + npcs
             self.act_voice["values"] = voices
-            self._reset_targets(lines)
             self._load_export_defaults(p)
         except Exception as exc:
             self.status.config(text=f"Could not read project: {exc}")
@@ -219,41 +217,12 @@ class Launcher:
         ttk.Button(bf, text="Extract from .d files…",
                    command=self.guard(lambda: self.extract("files"))).pack(side="left", padx=6)
 
-        ttk.Separator(f).grid(row=3, column=0, columnspan=3, sticky="ew", pady=12)
-        ttk.Label(f, text="Reset takes", font=("", 12, "bold")).grid(row=4, column=0, columnspan=3, sticky="w")
-        ttk.Label(f, text="Scope:").grid(row=5, column=0, sticky="w", pady=4)
-        self.scope_var = tk.StringVar(value="Everything")
-        sc = ttk.Combobox(f, textvariable=self.scope_var, state="readonly", width=16,
-                          values=["Everything", "One character", "One line"])
-        sc.grid(row=5, column=1, sticky="w")
-        sc.bind("<<ComboboxSelected>>", lambda _e: self.refresh())
-        ttk.Label(f, text="Which:").grid(row=6, column=0, sticky="w")
-        self.target_var = tk.StringVar()
-        self.target_box = ttk.Combobox(f, textvariable=self.target_var, state="readonly", width=60)
-        self.target_box.grid(row=6, column=1, sticky="w")
-        self.keep_actors = tk.BooleanVar(value=True)
-        ttk.Checkbutton(f, text="Keep actor/mic notes", variable=self.keep_actors).grid(
-            row=7, column=1, sticky="w", pady=4)
-        ttk.Button(f, text="Reset…", command=self.guard(self.reset)).grid(row=8, column=1, sticky="w")
         ttk.Label(f, foreground="#777", wraplength=700, justify="left", text=
-                  "Takes are moved to <project>/_trash/<date-time>/ - nothing is deleted. Close the "
-                  "recorder before resetting.").grid(row=9, column=0, columnspan=3, sticky="w", pady=6)
+                  "Recordings are matched by line ID, so re-extracting after the scripts change keeps "
+                  "your takes.").grid(row=3, column=0, columnspan=3, sticky="w", pady=6)
         t = self._log("project", 9)
-        t.grid(row=10, column=0, columnspan=3, sticky="nsew")
-        f.rowconfigure(10, weight=1)
-
-    def _reset_targets(self, lines) -> None:
-        scope = self.scope_var.get()
-        if scope == "One character":
-            vals = sorted({l.npc for l in lines}, key=str.lower)
-        elif scope == "One line":
-            vals = [f"{l.id}   {l.text[:50]}" for l in lines]
-        else:
-            vals = []
-        self.target_box["values"] = vals
-        self.target_box.config(state="readonly" if vals else "disabled")
-        if self.target_var.get() not in vals:
-            self.target_var.set(vals[0] if vals else "")
+        t.grid(row=4, column=0, columnspan=3, sticky="nsew")
+        f.rowconfigure(4, weight=1)
 
     def extract(self, mode: str) -> None:
         p = self.project()
@@ -281,26 +250,6 @@ class Launcher:
                             f"from {res.files} file(s) -> {p.lines_csv}", clear=True)
         for w in res.warnings:
             self.log("project", "warning: " + w)
-        self.refresh()
-
-    def reset(self) -> None:
-        p, lines, s = self.lines_session()
-        scope, tgt = self.scope_var.get(), self.target_var.get()
-        if scope == "One character":
-            sel, what = [l for l in lines if l.npc == tgt], f"all takes of {tgt}"
-        elif scope == "One line":
-            lid = tgt.split()[0] if tgt else ""
-            sel, what = [l for l in lines if l.id == lid], f"all takes of line {lid}"
-        else:
-            sel, what = lines, "ALL takes of ALL lines"
-        if not sel:
-            raise UserError("Nothing selected to reset.")
-        if not messagebox.askyesno("Reset", f"Reset {what}?\n\nFiles go to the _trash folder in the "
-                                            "project; chosen takes are forgotten."):
-            return
-        moved, trash = reset_lines(p, s, sel, clear_actors=scope == "Everything" and not self.keep_actors.get())
-        self.log("project", f"Reset {what}: {moved} file(s) moved to {trash}" if trash
-                 else f"Reset {what}: no take files found", clear=True)
         self.refresh()
 
     # ------------------------------------------------------------ record tab
@@ -415,7 +364,6 @@ class Launcher:
             "sample_rate": tk.StringVar(value=str(d.sample_rate)), "codec": tk.StringVar(value=d.codec),
             "channels": tk.StringVar(value=str(d.channels)), "highpass_hz": tk.StringVar(value=str(d.highpass_hz)),
             "normalize": tk.StringVar(value=d.normalize), "target_db": tk.StringVar(value=str(d.target_db)),
-            "denoise": tk.BooleanVar(value=d.denoise),
         }
         rows = [("Sample rate (Hz):", "sample_rate", ["22050", "32000", "44100", "48000"]),
                 ("Format / codec:", "codec", CODECS), ("Channels:", "channels", ["1", "2"]),
@@ -427,8 +375,6 @@ class Launcher:
             w = (ttk.Combobox(f, textvariable=self.x[key], values=vals, width=14) if vals
                  else ttk.Entry(f, textvariable=self.x[key], width=16))
             w.grid(row=i, column=1, sticky="w")
-        ttk.Checkbutton(f, text="Light noise reduction", variable=self.x["denoise"]).grid(
-            row=7, column=1, sticky="w")
         ttk.Label(f, text="Only voice / character:").grid(row=8, column=0, sticky="w", pady=2)
         sub = ttk.Frame(f)
         sub.grid(row=8, column=1, sticky="w")
@@ -466,8 +412,7 @@ class Launcher:
             return ExportSettings(
                 sample_rate=int(x["sample_rate"].get()), codec=x["codec"].get().strip(),
                 channels=int(x["channels"].get()), highpass_hz=float(x["highpass_hz"].get()),
-                normalize=x["normalize"].get(), target_db=float(x["target_db"].get()),
-                denoise=bool(x["denoise"].get()))
+                normalize=x["normalize"].get(), target_db=float(x["target_db"].get()))
         except ValueError:
             raise UserError("Check the export numbers (sample rate, channels, high-pass, target level).")
 
@@ -485,7 +430,7 @@ class Launcher:
         cfg = self.export_settings()
         data = p.config()
         data["export"] = {k: getattr(cfg, k) for k in ("sample_rate", "codec", "channels", "highpass_hz",
-                                                         "normalize", "target_db", "denoise")}
+                                                         "normalize", "target_db")}
         p.root.mkdir(parents=True, exist_ok=True)
         p.config_file.write_text(json.dumps(data, indent=1), encoding="utf-8")
         messagebox.showinfo("Saved", f"Saved to {p.config_file}")

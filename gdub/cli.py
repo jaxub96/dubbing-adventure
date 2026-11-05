@@ -148,7 +148,6 @@ def build_parser(export_defaults: dict | None = None) -> argparse.ArgumentParser
     s.add_argument("--codec", default=d.codec, help="pcm_s16le (default), adpcm_ms, ...")
     s.add_argument("--channels", type=int, default=d.channels)
     s.add_argument("--highpass-hz", dest="highpass_hz", type=float, default=d.highpass_hz)
-    s.add_argument("--denoise", action="store_true", default=d.denoise)
     s.add_argument("--trim-below-peak-db", dest="trim_below_peak_db", type=float, default=d.trim_below_peak_db)
     s.add_argument("--lead-ms", dest="lead_ms", type=float, default=d.lead_ms)
     s.add_argument("--tail-ms", dest="tail_ms", type=float, default=d.tail_ms)

@@ -23,7 +23,7 @@ from the ID, so nobody types filenames or cuts up long recordings.
 four tabs that replace every terminal command:
 
 1. **Project** – choose/create the project folder, extract the line list from your `.d`
-   scripts, reset takes (all / one character / one line; files go to `_trash/`, not deleted).
+   scripts.
 2. **Record** – pick microphone and playback device, start the recorder (optionally on one
    voice or character), save actor/mic notes.
 3. **Export** – pick the game's speech folder and format, run the export with a progress bar,
@@ -125,11 +125,11 @@ gdub actor -p myproject 15 --name "Hero" --mic "SM7B" --distance 20cm --gain "45
 
 ```bash
 gdub export -p myproject --out path/to/_work/Data/Sound/Speech
-gdub export -p myproject --out … --voice 15 --denoise --sample-rate 22050 --codec adpcm_ms
+gdub export -p myproject --out … --voice 15 --sample-rate 22050 --codec adpcm_ms
 ```
 
 For every line with a chosen take: remove DC → 80 Hz high-pass → trim silence (50 ms lead /
-150 ms tail, threshold adapts to the noise floor) → optional denoise (ffmpeg `afftdn`) →
+150 ms tail, threshold adapts to the noise floor) →
 normalise speech level (default RMS −20 dBFS over speech only, peak never above −1 dBFS) →
 convert with ffmpeg (mono, no extra metadata chunks, TPDF dither for 16-bit) →
 `<ID>.wav` in the output folder. `export_log.csv` lists gain per line; lines that couldn't
