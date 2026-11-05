@@ -1,7 +1,7 @@
 """Tkinter recorder: line-ID-driven, keyboard/foot-pedal friendly.
 
 Keys: Space record/stop - Right/Left next/previous line - N next unrecorded - P play selected
-take - 1..9 pick take - Del reject selected take - F cycle speaker filter - Esc stop playback
+take - 1..9 pick take - Del/Backspace reject selected take - F cycle speaker filter - Esc stop playback
 """
 from __future__ import annotations
 
@@ -12,6 +12,14 @@ from tkinter import messagebox, ttk
 from .workspace import Workspace
 
 GREY = "#8a8a8a"
+
+
+def _pick_font(root, candidates, fallback):
+    """First installed font family: Segoe UI/Consolas (Windows), Helvetica Neue/Menlo (macOS),
+    DejaVu (Linux)."""
+    from tkinter import font as tkfont
+    have = set(tkfont.families(root))
+    return next((f for f in candidates if f in have), fallback)
 DEBOUNCE_S = 0.25      # ignore key auto-repeat from pedals / held keys
 
 
@@ -30,6 +38,8 @@ class RecorderApp:
     # ------------------------------------------------------------------ layout
     def _build(self) -> None:
         r = self.root
+        ui = _pick_font(r, ["Segoe UI", "Helvetica Neue", "SF Pro Text", "DejaVu Sans"], "Helvetica")
+        mono = _pick_font(r, ["Consolas", "Menlo", "DejaVu Sans Mono"], "Courier")
         r.title("Gothic Dub Recorder")
         r.geometry("1000x680")
         r.minsize(700, 520)
@@ -57,21 +67,21 @@ class RecorderApp:
         ttk.Checkbutton(top, text="Auto-advance", variable=self.adv_var, takefocus=0,
                         command=self._on_filter).pack(side="left", padx=6)
 
-        self.context = tk.Label(r, text="", fg=GREY, font=("Segoe UI", 13), anchor="w",
+        self.context = tk.Label(r, text="", fg=GREY, font=(ui, 13), anchor="w",
                                 justify="left", wraplength=940)
         self.context.grid(row=1, column=0, sticky="ew", padx=16, pady=(14, 0))
-        self.header = tk.Label(r, text="", fg="#3a6ea5", font=("Segoe UI", 11, "bold"), anchor="w")
+        self.header = tk.Label(r, text="", fg="#3a6ea5", font=(ui, 11, "bold"), anchor="w")
         self.header.grid(row=2, column=0, sticky="ew", padx=16, pady=(14, 0))
-        self.main = tk.Label(r, text="", font=("Segoe UI", 28), anchor="nw", justify="left",
+        self.main = tk.Label(r, text="", font=(ui, 28), anchor="nw", justify="left",
                              wraplength=940)
         self.main.grid(row=3, column=0, sticky="nsew", padx=16, pady=(2, 6))
         r.rowconfigure(3, weight=1)
-        self.ids = tk.Label(r, text="", fg=GREY, font=("Consolas", 10), anchor="w", justify="left")
+        self.ids = tk.Label(r, text="", fg=GREY, font=(mono, 10), anchor="w", justify="left")
         self.ids.grid(row=4, column=0, sticky="ew", padx=16)
 
         rec = ttk.Frame(r, padding=(16, 8))
         rec.grid(row=5, column=0, sticky="ew")
-        self.rec_label = tk.Label(rec, text="", font=("Segoe UI", 14, "bold"), width=16, anchor="w")
+        self.rec_label = tk.Label(rec, text="", font=(ui, 14, "bold"), width=16, anchor="w")
         self.rec_label.pack(side="left")
         self.meter = tk.Canvas(rec, height=16, bg="#222", highlightthickness=0)
         self.meter.pack(side="left", fill="x", expand=True)
@@ -79,25 +89,29 @@ class RecorderApp:
         tk_frame = ttk.Frame(r, padding=(16, 0))
         tk_frame.grid(row=6, column=0, sticky="ew")
         tk_frame.columnconfigure(0, weight=1)
-        self.takes = tk.Listbox(tk_frame, height=6, font=("Consolas", 11), exportselection=False,
+        self.takes = tk.Listbox(tk_frame, height=6, font=(mono, 11), exportselection=False,
                                 activestyle="none", takefocus=0)
         self.takes.grid(row=0, column=0, sticky="ew")
         self.takes.bind("<ButtonRelease-1>", self._on_take_click)
         self.takes.bind("<Double-Button-1>", lambda e: self.play())
 
-        self.progress = tk.Label(r, text="", font=("Segoe UI", 12, "bold"), anchor="w")
+        self.progress = tk.Label(r, text="", font=(ui, 12, "bold"), anchor="w")
         self.progress.grid(row=7, column=0, sticky="ew", padx=16, pady=(8, 0))
         self.status = tk.Label(r, text="", fg=GREY, anchor="w")
         self.status.grid(row=8, column=0, sticky="ew", padx=16)
         tk.Label(r, fg=GREY, anchor="w", text="Space rec/stop · ←/→ line · N next unrecorded · "
-                 "P play · 1-9 pick take · Del reject · F speaker filter · Esc stop playback"
+                 "P play · 1-9 pick take · Del/⌫ reject · F speaker filter · Esc stop playback"
                  ).grid(row=9, column=0, sticky="ew", padx=16, pady=(0, 8))
         r.bind("<Configure>", self._on_resize)
 
     def _bind(self) -> None:
         self.root.bind_all("<Key>", self._on_key)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
-        self.root.focus_set()
+        # bring the window to the front (on macOS it otherwise stays behind the terminal)
+        self.root.lift()
+        self.root.attributes("-topmost", True)
+        self.root.after(300, lambda: self.root.attributes("-topmost", False))
+        self.root.focus_force()
 
     def _on_resize(self, event) -> None:
         if event.widget is self.root:
@@ -125,7 +139,7 @@ class RecorderApp:
         elif k.lower() == "f":
             self.ws.cycle_voice_filter()
             self.refresh()
-        elif k == "Delete":
+        elif k in ("Delete", "BackSpace"):   # Mac keyboards: the "delete" key is BackSpace
             self.reject()
         elif k == "Escape":
             self.engine.stop_playback()

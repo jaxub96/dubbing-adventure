@@ -22,6 +22,22 @@ pip install -r requirements.txt     # numpy, scipy, soundfile, sounddevice
 pip install -e .                    # optional: gives you the `gdub` command
 ```
 
+### macOS notes
+
+```bash
+brew install ffmpeg
+brew install python-tk@3.13     # only if you use Homebrew Python: it ships without tkinter
+python3 -m pip install -r requirements.txt     # PortAudio is bundled in the sounddevice wheel
+```
+
+* Use Python from python.org or Homebrew, **not** Apple's system Python 3.9 (its Tk 8.5 is
+  buggy). Check with `python3 -c "import tkinter; print(tkinter.TkVersion)"` – needs 8.6.
+* **Microphone permission**: the first `gdub record` makes macOS ask whether Terminal (or
+  iTerm/VS Code) may use the microphone – allow it. If you denied it earlier, enable it under
+  System Settings → Privacy & Security → Microphone, otherwise you record silence.
+* The key that reads "delete" on a Mac keyboard rejects the selected take (same as Del).
+* The window is raised to the front on start. Tests run on macOS in CI (`.github/workflows`).
+
 Without the editable install use `python -m gdub …` instead of `gdub …`.
 
 ## Workflow
@@ -61,7 +77,7 @@ gdub record -p myproject --simulate           # try the UI without a microphone
 | N | Next unrecorded line |
 | P | Play the selected take |
 | 1–9 | Pick that take number as the best one (also un-rejects it) |
-| Del | Reject the selected take (file stays on disk) |
+| Del / ⌫ | Reject the selected take (file stays on disk) |
 | F | Cycle the speaker filter (all → each voice → all); also in the drop-downs |
 | Esc | Stop playback |
 
